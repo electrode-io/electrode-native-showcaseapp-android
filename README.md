@@ -18,7 +18,7 @@ This apps demonstrates few different ways that you can integrate miniapps inside
 
 The following cauldron configuration is used to generate the container for this native application.
 
-- [ShowcaseAppCauldron](https://github.com/deepueg/electrode-native-showcaseapp-cauldron/blob/master/cauldron.json)
+- [ShowcaseAppCauldron](https://github.com/electrode-io/electrode-native-showcaseapp-cauldron)
 
 And the following repo is set as the gitHub publisher for the generated container. 
 
