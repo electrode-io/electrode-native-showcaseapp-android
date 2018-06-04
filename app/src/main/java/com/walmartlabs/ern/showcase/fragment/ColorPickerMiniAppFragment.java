@@ -2,6 +2,7 @@ package com.walmartlabs.ern.showcase.fragment;
 
 import android.graphics.Color;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -9,19 +10,17 @@ import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 
+import com.ErnShowcaseNavigationApi.ern.model.ErnRoute;
 import com.colorpickerApi.ern.api.ColorPickerApi;
 import com.walmartlabs.electrode.reactnative.bridge.ElectrodeBridgeEventListener;
 import com.walmartlabs.ern.showcase.R;
 
 public class ColorPickerMiniAppFragment extends ElectrodeMiniAppFragment {
 
-    public static ColorPickerMiniAppFragment newInstance() {
-        return new ColorPickerMiniAppFragment();
-    }
-
-    @Override
-    String getMiniAppName() {
-        return "colorpickerdemominiapp";
+    public static ColorPickerMiniAppFragment newInstance(@NonNull ErnRoute route) {
+        ColorPickerMiniAppFragment fragment = new ColorPickerMiniAppFragment();
+        putMiniAppNameArgument(route, fragment);
+        return fragment;
     }
 
     @Override

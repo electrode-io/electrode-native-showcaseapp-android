@@ -7,11 +7,15 @@
         <item
             android:id="@+id/nav_movies"
             android:icon="@drawable/ic_menu_slideshow"
-            android:title="MovieListMiniApp" />
+            android:title="Movie list MiniApp" />
         <item
             android:id="@+id/nav_color_picker"
             android:icon="@drawable/ic_menu_manage"
-            android:title="ColorPickerMiniApp" />
+            android:title="Color Picker MiniApp" />
+        <item
+            android:id="@+id/nav_view_builder"
+            android:icon="@drawable/ic_menu_manage"
+            android:title="View Builder" />
 
     </group>
 </menu>

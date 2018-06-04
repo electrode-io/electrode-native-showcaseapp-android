@@ -12,44 +12,43 @@ import android.support.v4.app.FragmentTransaction;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
-import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.MenuItem;
 import android.widget.Toast;
 
+import com.ErnShowcaseNavigationApi.ern.api.ErnNavigationApi;
+import com.ErnShowcaseNavigationApi.ern.model.ErnRoute;
 import com.ernnavigation.ern.api.NavigateData;
 import com.ernnavigation.ern.api.NavigationApi;
 import com.walmartlabs.electrode.reactnative.bridge.ElectrodeBridgeRequestHandler;
 import com.walmartlabs.electrode.reactnative.bridge.ElectrodeBridgeResponseListener;
+import com.walmartlabs.electrode.reactnative.bridge.FailureMessage;
+import com.walmartlabs.electrode.reactnative.bridge.None;
+import com.walmartlabs.electrode.reactnative.bridge.helpers.Logger;
 import com.walmartlabs.ern.container.ElectrodeMiniAppActivity;
-import com.walmartlabs.ern.container.ElectrodeReactActivityDelegate;
 import com.walmartlabs.ern.container.miniapps.MiniAppsConfig;
 import com.walmartlabs.ern.showcase.fragment.ColorPickerMiniAppFragment;
 import com.walmartlabs.ern.showcase.fragment.ElectrodeMiniAppFragment;
+import com.walmartlabs.ern.showcase.fragment.GenericMiniAppFragment;
 import com.walmartlabs.ern.showcase.fragment.InitialFragment;
-import com.walmartlabs.ern.showcase.fragment.MovieListMiniAppFragment;
 
-public class MainActivity extends AppCompatActivity
+import static com.walmartlabs.ern.showcase.apis.NavigationApiRequestHanlder.ERN_ROUTE;
+
+public class MainActivity extends ElectrodeCoreActivity
         implements NavigationView.OnNavigationItemSelectedListener,
-        ElectrodeReactActivityListener,
-        ElectrodeMiniAppFragment.OnFragmentInteractionListener,
-        ElectrodeReactActivityDelegate.BackKeyHandler {
+        ElectrodeMiniAppFragment.OnFragmentInteractionListener {
 
 
     private static final String TAG = MainActivity.class.getSimpleName();
-    private ElectrodeReactActivityDelegate mReactActivityDelegate;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-
-        mReactActivityDelegate = new ElectrodeReactActivityDelegate();
-        mReactActivityDelegate.setBackKeyHandler(this);
-
 
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
@@ -66,6 +65,21 @@ public class MainActivity extends AppCompatActivity
         registerNavigationApi();
     }
 
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+
+        ErnRoute route = new ErnRoute(intent.getBundleExtra(ERN_ROUTE));
+        Fragment fragment;
+        if (route.getPath().equals("colorpickerdemominiapp")) {
+            fragment = ColorPickerMiniAppFragment.newInstance(route);
+        } else {
+            fragment = GenericMiniAppFragment.newInstance(route);
+        }
+
+        switchToThisFragment(fragment);
+    }
+
     private void switchToThisFragment(@NonNull final Fragment fragment) {
         FragmentManager fragmentManager = getSupportFragmentManager();
         FragmentTransaction transaction = fragmentManager.beginTransaction();
@@ -77,6 +91,7 @@ public class MainActivity extends AppCompatActivity
     /**
      * Implementation of the navigation API, this helps any MiniApp to easily navigate to other MiniApps and also pass an additional input data if necessary.
      */
+    //FIXME: Update this code to use the new ErnNavigationApi. This would need the miniapps inside the container(MovieListMiniApp) tobe updated.
     private void registerNavigationApi() {
         NavigationApi.requests().registerNavigateRequestHandler(new ElectrodeBridgeRequestHandler<NavigateData, Boolean>() {
             @Override
@@ -105,28 +120,7 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    protected void onResume() {
-        super.onResume();
-        Log.d("", this.toString());
-        mReactActivityDelegate.onResume(this);
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        mReactActivityDelegate.onPause(this);
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        mReactActivityDelegate.onDestroy(this);
-    }
-
-
-    @Override
     public void onBackPressed() {
-        mReactActivityDelegate.onBackPressed();
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
         if (drawer.isDrawerOpen(GravityCompat.START)) {
             drawer.closeDrawer(GravityCompat.START);
@@ -139,39 +133,50 @@ public class MainActivity extends AppCompatActivity
     public boolean onNavigationItemSelected(MenuItem item) {
         // Handle navigation view item clicks here.
         int id = item.getItemId();
+        String miniAppName;
 
-        if (id == R.id.nav_movies) {
-            Fragment movieListMiniAppFragment = MovieListMiniAppFragment.newInstance();
-            switchToThisFragment(movieListMiniAppFragment);
-        } else if (id == R.id.nav_color_picker) {
-            Fragment colorPickerFragment = ColorPickerMiniAppFragment.newInstance();
-            switchToThisFragment(colorPickerFragment);
-        } else {
-            Toast.makeText(this, "Navigation for this item is not supported yet.! ", Toast.LENGTH_SHORT).show();
+        switch (id) {
+            case R.id.nav_movies:
+                miniAppName = "MovieListMiniApp";
+                break;
+            case R.id.nav_color_picker:
+                miniAppName = "colorpickerdemominiapp";
+                break;
+            case R.id.nav_view_builder:
+                miniAppName = "NavDemoMiniApp";
+                break;
+            default:
+                throw new IllegalStateException("Menu action not supported");
         }
+
+        navigateTo(miniAppName);
 
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
         drawer.closeDrawer(GravityCompat.START);
         return true;
     }
 
+    private void navigateTo(final String path) {
+        if (!TextUtils.isEmpty(path)) {
+            ErnRoute ernRoute = new ErnRoute.Builder(path).build();
+            ErnNavigationApi.requests().navigate(ernRoute, new ElectrodeBridgeResponseListener<None>() {
+                @Override
+                public void onSuccess(@Nullable None responseData) {
+                    Toast.makeText(MainActivity.this, "Successfully navigated to " + path, Toast.LENGTH_SHORT).show();
+                }
 
-    @Override
-    public ElectrodeReactActivityDelegate getElectrodeDelegate() {
-        if (mReactActivityDelegate == null) {
-            throw new IllegalStateException("Something is not right, looks like reactActivityDelegate is not initialized");
+                @Override
+                public void onFailure(@NonNull FailureMessage failureMessage) {
+                    Toast.makeText(MainActivity.this, "Failed to navigate to " + path + ". Error:" + failureMessage.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            });
+        } else {
+            Logger.w(TAG, "Unable to navigate. Empty path received for navigation.");
         }
-        return mReactActivityDelegate;
     }
 
     @Override
     public void onFragmentInteraction(Uri uri) {
         throw new IllegalStateException("TODO: handle fragment interactions");
-    }
-
-    @Override
-    public void onBackKey() {
-        //TODO: handle what needs to happen when a back key is pressed on a react native view.
-        Toast.makeText(this, "TODO: Handle onBackKey()", Toast.LENGTH_SHORT).show();
     }
 }

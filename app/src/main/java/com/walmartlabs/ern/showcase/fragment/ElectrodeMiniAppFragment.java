@@ -3,12 +3,14 @@ package com.walmartlabs.ern.showcase.fragment;
 import android.content.Context;
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.ErnShowcaseNavigationApi.ern.model.ErnRoute;
 import com.walmartlabs.ern.showcase.ElectrodeReactActivityListener;
 
 import javax.annotation.Nullable;
@@ -20,6 +22,7 @@ import javax.annotation.Nullable;
  * to handle interaction events.
  */
 public abstract class ElectrodeMiniAppFragment extends Fragment {
+    public static final String KEY_MINI_APP_NAME = "MiniAppName";
     private static final String TAG = ElectrodeMiniAppFragment.class.getSimpleName();
     private OnFragmentInteractionListener mListener;
     private ElectrodeReactActivityListener mElectrodeReactActivityListener;
@@ -29,7 +32,12 @@ public abstract class ElectrodeMiniAppFragment extends Fragment {
      *
      * @return String
      */
-    abstract String getMiniAppName();
+    String getMiniAppName() {
+        if (null == getArguments() || null == getArguments().getString(KEY_MINI_APP_NAME)) {
+            throw new IllegalArgumentException("Arguments missing MiniApp name");
+        }
+        return getArguments().getString(KEY_MINI_APP_NAME);
+    }
 
     /**
      * Return your bundle that will be passed to the MiniApp when the MiniApp is launched.
@@ -91,6 +99,12 @@ public abstract class ElectrodeMiniAppFragment extends Fragment {
     public void onDetach() {
         super.onDetach();
         mListener = null;
+    }
+
+    protected static void putMiniAppNameArgument(@NonNull ErnRoute route, @NonNull ElectrodeMiniAppFragment fragment) {
+        Bundle args = new Bundle();
+        args.putString(KEY_MINI_APP_NAME, route.getPath());
+        fragment.setArguments(args);
     }
 
     /**
