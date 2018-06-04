@@ -7,6 +7,7 @@ This is a native android application that holds three MiniApps and APIs packaged
 1. [MovieListMiniApp](https://github.com/electrode-io/MovieListMiniApp)
 2. [MovieDetailsMiniApp](https://github.com/electrode-io/MovieDetailsMiniApp)
 3. [ColorPickerMiniApp](https://github.com/electrode-io/ColorPickerMiniApp)
+4. [NavDemoMiniApp](https://github.com/electrode-io/NavDemoMiniApp)
 
 
 ### APIs:
