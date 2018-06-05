@@ -15,11 +15,13 @@ import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.widget.Toolbar;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
 
 import com.ErnShowcaseNavigationApi.ern.api.ErnNavigationApi;
 import com.ErnShowcaseNavigationApi.ern.model.ErnRoute;
+import com.ErnShowcaseNavigationApi.ern.model.NavBar;
 import com.ernnavigation.ern.api.NavigateData;
 import com.ernnavigation.ern.api.NavigationApi;
 import com.walmartlabs.electrode.reactnative.bridge.ElectrodeBridgeRequestHandler;
@@ -77,7 +79,15 @@ public class MainActivity extends ElectrodeCoreActivity
             fragment = GenericMiniAppFragment.newInstance(route);
         }
 
+        updateActionBarTitle(route);
+
         switchToThisFragment(fragment);
+    }
+
+    private void updateActionBarTitle(@NonNull ErnRoute route) {
+        if(getSupportActionBar() != null && route.getNavBar() != null) {
+            getSupportActionBar().setTitle(route.getNavBar().getTitle());
+        }
     }
 
     private void switchToThisFragment(@NonNull final Fragment fragment) {
@@ -86,6 +96,11 @@ public class MainActivity extends ElectrodeCoreActivity
 
         transaction.replace(R.id.main_content, fragment);
         transaction.commit();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        return super.onCreateOptionsMenu(menu);
     }
 
     /**
@@ -134,31 +149,36 @@ public class MainActivity extends ElectrodeCoreActivity
         // Handle navigation view item clicks here.
         int id = item.getItemId();
         String miniAppName;
+        String title;
 
         switch (id) {
             case R.id.nav_movies:
                 miniAppName = "MovieListMiniApp";
+                title = "Movie List";
                 break;
             case R.id.nav_color_picker:
                 miniAppName = "colorpickerdemominiapp";
+                title = "Color Picker";
                 break;
             case R.id.nav_view_builder:
                 miniAppName = "NavDemoMiniApp";
+                title = "Nav Demo";
                 break;
             default:
                 throw new IllegalStateException("Menu action not supported");
         }
 
-        navigateTo(miniAppName);
+        navigateTo(miniAppName, title);
 
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
         drawer.closeDrawer(GravityCompat.START);
         return true;
     }
 
-    private void navigateTo(final String path) {
+    private void navigateTo(final String path, String title) {
         if (!TextUtils.isEmpty(path)) {
-            ErnRoute ernRoute = new ErnRoute.Builder(path).build();
+            NavBar navBar = new NavBar.Builder(title).build();
+            ErnRoute ernRoute = new ErnRoute.Builder(path).navBar(navBar).build();
             ErnNavigationApi.requests().navigate(ernRoute, new ElectrodeBridgeResponseListener<None>() {
                 @Override
                 public void onSuccess(@Nullable None responseData) {
