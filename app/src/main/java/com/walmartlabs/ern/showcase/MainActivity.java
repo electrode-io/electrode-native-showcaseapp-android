@@ -17,6 +17,7 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.Toast;
 
 import com.ErnShowcaseNavigationApi.ern.api.ErnNavigationApi;
@@ -36,14 +37,19 @@ import com.walmartlabs.ern.showcase.fragment.ElectrodeMiniAppFragment;
 import com.walmartlabs.ern.showcase.fragment.GenericMiniAppFragment;
 import com.walmartlabs.ern.showcase.fragment.InitialFragment;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import static com.walmartlabs.ern.showcase.apis.NavigationApiRequestHanlder.ERN_ROUTE;
 
 public class MainActivity extends ElectrodeCoreActivity
         implements NavigationView.OnNavigationItemSelectedListener,
-        ElectrodeMiniAppFragment.OnFragmentInteractionListener {
+        ElectrodeMiniAppFragment.OnFragmentInteractionListener,
+        FragmentManager.OnBackStackChangedListener {
 
 
     private static final String TAG = MainActivity.class.getSimpleName();
+    private ActionBarDrawerToggle toggle;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -53,54 +59,87 @@ public class MainActivity extends ElectrodeCoreActivity
         setSupportActionBar(toolbar);
 
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
-        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
+        toggle = new ActionBarDrawerToggle(
                 this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
         drawer.addDrawerListener(toggle);
         toggle.syncState();
+        toggle.setToolbarNavigationClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                manageBackStackOnBackPress();
+            }
+        });
 
         NavigationView navigationView = findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
 
         Fragment initialFragment = InitialFragment.newInstance();
-        switchToThisFragment(initialFragment);
+        switchToThisFragment(initialFragment, "WelcomeFragment", false );
 
         registerNavigationApi();
+
+        getSupportFragmentManager().addOnBackStackChangedListener(this);
     }
 
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
 
-        ErnRoute route = new ErnRoute(intent.getBundleExtra(ERN_ROUTE));
+        if(intent.hasExtra(ERN_ROUTE)) {
+            ErnRoute route = new ErnRoute(intent.getBundleExtra(ERN_ROUTE));
+            Fragment fragment = createFragmentForRoute(route);
+
+            boolean isScreenSecondary;
+            try {
+                JSONObject payLoad = getJsonFromString(route.getJsonPayload());
+                //When a miniapp is navigating to it's internal screens set them as secondary.
+                //This flag is used to decide whether to show an hamburger menu or an up arrow while navigating.
+                isScreenSecondary = payLoad.getBoolean("isScreenSecondary");
+            } catch (JSONException e) {
+                isScreenSecondary = false;
+            }
+
+            //New intent received is not for a secondary screen and it is not the current fragment.
+            if (!isScreenSecondary && !getCurrentFragmentName().equals(route.getPath())) {
+                clearBackStack();
+            }
+
+            switchToThisFragment(fragment, route.getPath(), isScreenSecondary);
+        }
+    }
+
+    private Fragment createFragmentForRoute(ErnRoute route) {
         Fragment fragment;
         if (route.getPath().equals("colorpickerdemominiapp")) {
             fragment = ColorPickerMiniAppFragment.newInstance(route);
         } else {
             fragment = GenericMiniAppFragment.newInstance(route);
         }
-
-        updateActionBarTitle(route);
-
-        switchToThisFragment(fragment);
+        return fragment;
     }
 
-    private void updateActionBarTitle(@NonNull ErnRoute route) {
-        if(getSupportActionBar() != null && route.getNavBar() != null) {
-            getSupportActionBar().setTitle(route.getNavBar().getTitle());
+
+    private void clearBackStack() {
+        while (getSupportFragmentManager().getBackStackEntryCount() > 0) {
+            getSupportFragmentManager().popBackStackImmediate();
         }
     }
 
-    private void switchToThisFragment(@NonNull final Fragment fragment) {
-        FragmentManager fragmentManager = getSupportFragmentManager();
-        FragmentTransaction transaction = fragmentManager.beginTransaction();
-
-        transaction.replace(R.id.main_content, fragment);
-        transaction.commit();
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        return super.onCreateOptionsMenu(menu);
+    private void switchToThisFragment(@NonNull final Fragment fragment, @NonNull final String fragmentName, final boolean forceCreateFragment) {
+        if (TextUtils.isEmpty(fragmentName)) {
+            throw new IllegalStateException("Fragment name cannot be empty or null");
+        }
+        Logger.d(TAG, "inside switchToThisFragment. Current:%s Next:%s", getCurrentFragmentName(), fragmentName);
+        if (forceCreateFragment || !fragmentName.equals(getCurrentFragmentName())) {
+            FragmentManager fragmentManager = getSupportFragmentManager();
+            Logger.d(TAG, "BackstackEntry count: %d", fragmentManager.getBackStackEntryCount());
+            FragmentTransaction transaction = fragmentManager.beginTransaction();
+            transaction.replace(R.id.main_content, fragment);
+            transaction.addToBackStack(fragmentName);
+            transaction.commit();
+        } else {
+            Logger.d(TAG, "This fragment is the currently displayed. ");
+        }
     }
 
     /**
@@ -135,17 +174,33 @@ public class MainActivity extends ElectrodeCoreActivity
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+    }
+
+    @Override
     public void onBackPressed() {
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
-        if (drawer.isDrawerOpen(GravityCompat.START)) {
-            drawer.closeDrawer(GravityCompat.START);
-        } else {
-            super.onBackPressed();
+        if (!manageBackStackOnBackPress()) {
+            if (drawer.isDrawerOpen(GravityCompat.START)) {
+                drawer.closeDrawer(GravityCompat.START);
+            } else {
+                super.onBackPressed();
+            }
         }
+    }
+
+    boolean manageBackStackOnBackPress() {
+        if (getSupportFragmentManager().getBackStackEntryCount() > 1) {
+            getSupportFragmentManager().popBackStack();
+            return true;
+        }
+        return false;
     }
 
     @Override
     public boolean onNavigationItemSelected(MenuItem item) {
+        Logger.i(TAG, "Entering onNavigationItemSelected()");
         // Handle navigation view item clicks here.
         int id = item.getItemId();
         String miniAppName;
@@ -198,5 +253,57 @@ public class MainActivity extends ElectrodeCoreActivity
     @Override
     public void onFragmentInteraction(Uri uri) {
         throw new IllegalStateException("TODO: handle fragment interactions");
+    }
+
+    @Override
+    public void onBackStackChanged() {
+        Logger.i(TAG, "Entering onBackStackChanged(): %d", getSupportFragmentManager().getBackStackEntryCount());
+        manageHomeAsUpEnabled();
+    }
+
+    private String getCurrentFragmentName() {
+        if (getSupportFragmentManager().getBackStackEntryCount() > 0) {
+            return getSupportFragmentManager().getBackStackEntryAt(getSupportFragmentManager().getBackStackEntryCount() - 1).getName();
+        }
+        return "";
+    }
+
+    private void manageHomeAsUpEnabled() {
+        boolean enable = getSupportFragmentManager().getBackStackEntryCount() > 1;
+        if (!enable) {
+            toggle.setDrawerIndicatorEnabled(true);
+            getSupportActionBar().setDisplayHomeAsUpEnabled(false);
+        } else {
+            toggle.setDrawerIndicatorEnabled(false);
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        }
+        toggle.syncState();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.main, menu);
+        return true;
+    }
+
+    @Override
+    public void updateTitle(@NonNull String title) {
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setTitle(title);
+        }
+    }
+
+    @NonNull
+    private JSONObject getJsonFromString(@Nullable String jsonString) {
+        try {
+            if (jsonString != null) {
+                return new JSONObject(jsonString);
+            } else {
+                return new JSONObject();
+            }
+        } catch (JSONException e) {
+            return new JSONObject();
+        }
     }
 }

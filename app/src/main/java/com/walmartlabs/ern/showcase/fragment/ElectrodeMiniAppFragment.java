@@ -3,6 +3,7 @@ package com.walmartlabs.ern.showcase.fragment;
 import android.content.Context;
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.annotation.CallSuper;
 import android.support.annotation.NonNull;
 import android.support.v4.app.Fragment;
 import android.util.Log;
@@ -11,9 +12,12 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import com.ErnShowcaseNavigationApi.ern.model.ErnRoute;
+import com.walmartlabs.electrode.reactnative.bridge.helpers.Logger;
 import com.walmartlabs.ern.showcase.ElectrodeReactActivityListener;
 
 import javax.annotation.Nullable;
+
+import static com.walmartlabs.ern.showcase.apis.NavigationApiRequestHanlder.ERN_ROUTE;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -27,6 +31,7 @@ public abstract class ElectrodeMiniAppFragment extends Fragment {
     private OnFragmentInteractionListener mListener;
     private ElectrodeReactActivityListener mElectrodeReactActivityListener;
 
+    private ErnRoute ernRoute;
     /**
      * Registered component name of your MiniApp
      *
@@ -47,6 +52,9 @@ public abstract class ElectrodeMiniAppFragment extends Fragment {
      */
     @Nullable
     Bundle getProps() {
+        if(ernRoute != null) {
+            return ernRoute.toBundle();
+        }
         return null;
     }
 
@@ -55,8 +63,15 @@ public abstract class ElectrodeMiniAppFragment extends Fragment {
     }
 
     @Override
+    @CallSuper
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if(getArguments() != null && getArguments().getBundle(ERN_ROUTE) != null) {
+            ernRoute = new ErnRoute(getArguments().getBundle(ERN_ROUTE));
+        } else {
+            Logger.w(TAG, "Unable to retrieve Route object");
+        }
+
     }
 
     @Override
@@ -64,10 +79,19 @@ public abstract class ElectrodeMiniAppFragment extends Fragment {
                              Bundle savedInstanceState) {
         if (this.getActivity() != null && !this.getActivity().isFinishing()) {
             Log.i(TAG, "Inflate view for MiniApp: " + getMiniAppName());
-            return mElectrodeReactActivityListener.getElectrodeDelegate().onCreate(this.getActivity(), getMiniAppName(), getProps());
+            return mElectrodeReactActivityListener.getElectrodeDelegate().createMiniAppRootView(getMiniAppName(), getProps());
         } else {
             Log.i(TAG, "Activity is finishing or already destroyed.");
             return null;
+        }
+    }
+
+    @CallSuper
+    @Override
+    public void onResume() {
+        super.onResume();
+        if(ernRoute.getNavBar() != null) {
+            mElectrodeReactActivityListener.updateTitle(ernRoute.getNavBar().getTitle());
         }
     }
 
@@ -104,6 +128,7 @@ public abstract class ElectrodeMiniAppFragment extends Fragment {
     protected static void putMiniAppNameArgument(@NonNull ErnRoute route, @NonNull ElectrodeMiniAppFragment fragment) {
         Bundle args = new Bundle();
         args.putString(KEY_MINI_APP_NAME, route.getPath());
+        args.putBundle(ERN_ROUTE, route.toBundle());
         fragment.setArguments(args);
     }
 

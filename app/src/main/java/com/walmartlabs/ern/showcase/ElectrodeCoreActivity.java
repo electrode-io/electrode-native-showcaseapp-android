@@ -8,7 +8,7 @@ import android.widget.Toast;
 
 import com.walmartlabs.ern.container.ElectrodeReactActivityDelegate;
 
-public class ElectrodeCoreActivity extends AppCompatActivity implements ElectrodeReactActivityDelegate.BackKeyHandler, ElectrodeReactActivityListener {
+public abstract class ElectrodeCoreActivity extends AppCompatActivity implements ElectrodeReactActivityDelegate.BackKeyHandler, ElectrodeReactActivityListener {
     private static final String TAG = ElectrodeCoreActivity.class.getSimpleName();
     private ElectrodeReactActivityDelegate mReactActivityDelegate;
 
@@ -22,7 +22,8 @@ public class ElectrodeCoreActivity extends AppCompatActivity implements Electrod
     @Override
     public void onBackKey() {
         //TODO: handle what needs to happen when a back key is pressed on a react native view.
-        Toast.makeText(this, "TODO: Handle onBackKey()", Toast.LENGTH_SHORT).show();
+//        Toast.makeText(this, "TODO: Handle onBackKey()", Toast.LENGTH_SHORT).show();
+        onBackPressed();
     }
 
     @Override
